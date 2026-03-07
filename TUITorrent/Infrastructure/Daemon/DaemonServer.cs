@@ -124,6 +124,7 @@ public class DaemonServer : IAsyncDisposable
                 GetTorrentRequest get => await HandleGetAsync(get, cancellationToken),
                 StopTorrentRequest stop => await HandleStopAsync(stop, cancellationToken),
                 RemoveTorrentRequest remove => await HandleRemoveAsync(remove, cancellationToken),
+                PurgeTorrentRequest purge => await HandlePurgeAsync(purge, cancellationToken),
                 ShutdownRequest => HandleShutdown(),
                 _ => new DaemonResponse(false, Error: "Unknown request type")
             };
@@ -183,6 +184,17 @@ public class DaemonServer : IAsyncDisposable
 
         await _manager.RemoveAsync(req.Id, ct);
         _logger.Information("Removed torrent {Id}", req.Id);
+        return new DaemonResponse(true);
+    }
+
+    private async Task<DaemonResponse> HandlePurgeAsync(PurgeTorrentRequest req, CancellationToken ct)
+    {
+        var info = await _manager.GetAsync(req.Id, ct);
+        if (info is null)
+            return new DaemonResponse(false, Error: $"Torrent '{req.Id}' not found");
+
+        await _manager.PurgeAsync(req.Id, ct);
+        _logger.Information("Purged torrent {Id} (data deleted)", req.Id);
         return new DaemonResponse(true);
     }
 

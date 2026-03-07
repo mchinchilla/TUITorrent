@@ -10,4 +10,5 @@ public interface ITorrentManager
     Task<TorrentInfo?> GetAsync(string id, CancellationToken cancellationToken = default);
     Task StopAsync(string id, CancellationToken cancellationToken = default);
     Task RemoveAsync(string id, CancellationToken cancellationToken = default);
+    Task PurgeAsync(string id, CancellationToken cancellationToken = default);
 }

@@ -46,6 +46,11 @@ public class DaemonClient : ITorrentManager
         await SendRequestAsync(new RemoveTorrentRequest(id), cancellationToken);
     }
 
+    public async Task PurgeAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await SendRequestAsync(new PurgeTorrentRequest(id), cancellationToken);
+    }
+
     public async Task ShutdownAsync(CancellationToken cancellationToken = default)
     {
         await SendRequestAsync(new ShutdownRequest(), cancellationToken);

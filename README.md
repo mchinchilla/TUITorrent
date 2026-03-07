@@ -213,13 +213,28 @@ tuitorrent stop a3f2b1c8
 Remove a torrent from the daemon. Stops the download if active.
 
 ```
-tuitorrent remove <id>
+tuitorrent remove <id> [OPTIONS]
 ```
 
+| Option | Short | Description |
+|---|---|---|
+| `<id>` | | 8-char hex torrent ID *(required)* |
+| `--delete-data` | `-d` | Delete all downloaded files and directories |
+
+<details>
+<summary><b>📋 Examples</b></summary>
+
 ```bash
+# Remove torrent from daemon (keep downloaded files)
 tuitorrent remove a3f2b1c8
 tuitorrent rm e7d4c9a1
+
+# Remove torrent AND delete all downloaded files/directories
+tuitorrent rm a3f2b1c8 -d
+tuitorrent remove e7d4c9a1 --delete-data
 ```
+
+</details>
 
 ---
 
@@ -441,7 +456,7 @@ TUITorrent/
 │   │   └── DownloadConfiguration.cs  # Immutable download config
 │   └── Interfaces/
 │       ├── ISettingsRepository.cs
-│       └── ITorrentManager.cs        # Add / List / Get / Stop / Remove
+│       └── ITorrentManager.cs        # Add / List / Get / Stop / Remove / Purge
 │
 ├── Application/                      # ⚙️ Use cases & orchestration
 │   ├── Models/

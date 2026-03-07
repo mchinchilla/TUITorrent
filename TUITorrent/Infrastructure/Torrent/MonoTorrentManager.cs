@@ -116,6 +116,29 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
         }
     }
 
+    public async Task PurgeAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (_torrents.TryRemove(id, out var managed))
+        {
+            await managed.Manager.StopAsync();
+
+            var savePath = managed.OutputDirectory;
+            var torrentName = managed.Manager.Torrent?.Name;
+
+            if (_engine is not null)
+                await _engine.RemoveAsync(managed.Manager);
+
+            if (torrentName is not null)
+            {
+                var contentPath = Path.Combine(savePath, torrentName);
+                if (Directory.Exists(contentPath))
+                    Directory.Delete(contentPath, recursive: true);
+                else if (File.Exists(contentPath))
+                    File.Delete(contentPath);
+            }
+        }
+    }
+
     private static TorrentInfo ToTorrentInfo(ManagedTorrent m)
     {
         var state = m.Manager.State switch

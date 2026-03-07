@@ -21,6 +21,7 @@ public static class DaemonPaths
 [JsonDerivedType(typeof(GetTorrentRequest), "get")]
 [JsonDerivedType(typeof(StopTorrentRequest), "stop")]
 [JsonDerivedType(typeof(RemoveTorrentRequest), "remove")]
+[JsonDerivedType(typeof(PurgeTorrentRequest), "purge")]
 [JsonDerivedType(typeof(ShutdownRequest), "shutdown")]
 public abstract record DaemonRequest;
 
@@ -37,6 +38,7 @@ public sealed record ListTorrentsRequest : DaemonRequest;
 public sealed record GetTorrentRequest(string Id) : DaemonRequest;
 public sealed record StopTorrentRequest(string Id) : DaemonRequest;
 public sealed record RemoveTorrentRequest(string Id) : DaemonRequest;
+public sealed record PurgeTorrentRequest(string Id) : DaemonRequest;
 public sealed record ShutdownRequest : DaemonRequest;
 
 // --- Responses ---
