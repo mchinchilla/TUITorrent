@@ -49,8 +49,9 @@ app.Configure(config =>
 
     config.AddCommand<RemoveTorrentCommand>("remove")
         .WithAlias("rm")
-        .WithDescription("Remove a torrent from the download list")
-        .WithExample("remove", "a3f2b1c8");
+        .WithDescription("Remove a torrent from the download list (use -d to delete files)")
+        .WithExample("remove", "a3f2b1c8")
+        .WithExample("rm", "a3f2b1c8", "--delete-data");
 
     config.AddCommand<SettingsCommand>("settings")
         .WithAlias("config")
