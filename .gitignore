@@ -372,4 +372,6 @@ FodyWeavers.xsd
 
 # Encrypted files and Data Protection keys
 *.enc
-TekiumERP/keys/
+
+# Publish output
+dist/

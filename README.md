@@ -1,90 +1,131 @@
-# TUITorrent
+<p align="center">
+  <h1 align="center">🌊 TUITorrent</h1>
+  <p align="center">
+    A terminal-based BitTorrent client built with .NET 10<br/>
+    Daemon architecture · Multiple simultaneous downloads · Real-time TUI
+  </p>
+</p>
 
-A terminal-based BitTorrent client built with .NET, featuring a daemon architecture for managing multiple simultaneous downloads via CLI.
+<p align="center">
+  <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
+  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey" alt="Platform" />
+  <img src="https://img.shields.io/badge/UI-Spectre.Console-blueviolet" alt="Spectre.Console" />
+</p>
 
-## Features
+---
 
-- Magnet link and `.torrent` file support
-- Multiple simultaneous downloads managed by a background daemon
-- Real-time progress tracking with live-updating tables
-- Persistent settings with per-download overrides
-- Auto-start daemon when adding downloads
-- Auto-shutdown daemon when all downloads complete (`--exit-when-done`)
-- Speed limiting (download/upload)
-- Connection encryption (None, Prefer, Require)
+## 📑 Table of Contents
 
-## Requirements
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Commands](#-commands)
+  - [download](#-download-alias-dl)
+  - [list](#-list-alias-ls)
+  - [status](#-status)
+  - [stop](#-stop)
+  - [remove](#-remove-alias-rm)
+  - [settings](#%EF%B8%8F-settings-alias-config)
+  - [daemon](#-daemon)
+- [Workflows](#-workflows)
+- [Architecture](#-architecture)
+- [Configuration](#-configuration)
+- [Tech Stack](#-tech-stack)
+- [License](#-license)
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+---
 
-## Build & Run
+## ✨ Features
+
+| | Feature | Description |
+|---|---|---|
+| 🧲 | **Magnet & .torrent** | Accepts both magnet URIs and `.torrent` files |
+| 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
+| 📊 | **Live progress** | Real-time tables with speed, peers, progress |
+| ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
+| 🚀 | **Auto-start daemon** | Daemon launches automatically on first download |
+| 🛑 | **Auto-shutdown** | `--exit-when-done` stops daemon when all downloads finish |
+| 🔒 | **Encryption** | Configurable connection encryption (None / Prefer / Require) |
+| 🎚️ | **Speed limits** | Per-download or global upload/download throttling |
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# Clone and build
-git clone <repo-url>
-cd TUITorrent
+# 1. Clone & build
+git clone <repo-url> && cd TUITorrent
 dotnet build
 
-# Run
-dotnet run --project TUITorrent -- <command>
+# 2. Download a torrent (daemon starts automatically)
+dotnet run --project TUITorrent -- dl "magnet:?xt=urn:btih:..." -f
+
+# 3. Check all active downloads
+dotnet run --project TUITorrent -- ls
 ```
 
-Or publish as a single binary:
+Or publish as a standalone binary:
 
 ```bash
 dotnet publish TUITorrent -c Release -o dist
-./dist/tuitorrent <command>
+./dist/tuitorrent dl "magnet:?xt=urn:btih:..." -f
 ```
 
-## Commands
+---
 
-### `download` (alias: `dl`)
+## 📖 Commands
 
-Add a torrent to the download queue. Automatically starts the daemon if it is not running.
+### 📥 `download` (alias: `dl`)
+
+Add a torrent to the download queue. Auto-starts the daemon if not running.
 
 ```
 tuitorrent download <source> [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `<source>` | Magnet URI or path to a `.torrent` file (required) |
-| `-o, --output <dir>` | Destination directory |
-| `-p, --port <port>` | Listening port for incoming connections |
-| `--dl-limit <KB/s>` | Max download speed in KB/s (0 = unlimited) |
-| `--ul-limit <KB/s>` | Max upload speed in KB/s (0 = unlimited) |
-| `--max-connections <n>` | Maximum number of connections |
-| `--no-seed` | Do not seed after download completes |
-| `-f, --follow` | Follow download progress in real-time |
-| `--exit-when-done` | Shut down daemon when all downloads complete |
+| Option | Short | Description |
+|---|---|---|
+| `<source>` | | Magnet URI or `.torrent` file path *(required)* |
+| `--output <dir>` | `-o` | Destination directory |
+| `--port <port>` | `-p` | Listening port |
+| `--dl-limit <KB/s>` | | Max download speed (0 = unlimited) |
+| `--ul-limit <KB/s>` | | Max upload speed (0 = unlimited) |
+| `--max-connections <n>` | | Max peer connections |
+| `--no-seed` | | Don't seed after completion |
+| `--follow` | `-f` | Follow progress in real-time |
+| `--exit-when-done` | | Shutdown daemon when all downloads complete |
 
-**Examples:**
+<details>
+<summary><b>📋 Examples</b></summary>
 
 ```bash
-# Download a magnet link
+# Basic magnet download
 tuitorrent download "magnet:?xt=urn:btih:..."
 
-# Download and follow progress in real-time
+# Follow progress live
 tuitorrent dl "magnet:?xt=urn:btih:..." -f
 
-# Download a .torrent file to a specific directory
+# .torrent file to a specific directory
 tuitorrent download ubuntu.torrent -o ~/Downloads/ISOs
 
-# Download with speed limits and no seeding
+# With speed limits, no seeding
 tuitorrent dl "magnet:?xt=urn:btih:..." --dl-limit 2048 --ul-limit 512 --no-seed
 
-# Download and auto-shutdown daemon when done
+# Auto-shutdown when done
 tuitorrent dl "magnet:?xt=urn:btih:..." --exit-when-done -f
 
-# Multiple downloads (daemon stays running between commands)
+# Queue multiple downloads
 tuitorrent dl "magnet:?xt=urn:btih:abc..." --exit-when-done
 tuitorrent dl "magnet:?xt=urn:btih:def..."
 tuitorrent dl fedora.torrent -o /data/isos
+# ↑ Daemon auto-exits when all three finish
 ```
+
+</details>
 
 ---
 
-### `list` (alias: `ls`)
+### 📋 `list` (alias: `ls`)
 
 List all active torrents in the daemon.
 
@@ -92,61 +133,68 @@ List all active torrents in the daemon.
 tuitorrent list [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `-w, --watch` | Continuously refresh the list (live mode) |
+| Option | Short | Description |
+|---|---|---|
+| `--watch` | `-w` | Continuously refresh (live dashboard) |
 
-**Examples:**
+<details>
+<summary><b>📋 Examples</b></summary>
 
 ```bash
-# Show all active torrents
+# Snapshot view
 tuitorrent list
 
-# Live-updating dashboard
-tuitorrent ls --watch
+# Live-updating dashboard (Ctrl+C to exit)
+tuitorrent ls -w
 ```
 
-**Output:**
+</details>
+
+**Sample output:**
 
 ```
-╔═ TUITorrent - Active Downloads ══════════════════════════════════════════════╗
-║ ┌──────────┬──────────────────────┬─────────────┬──────────┬────────┬──────┐ ║
-║ │ ID       │ Name                 │ State       │ Progress │ DL     │ Peers│ ║
-║ ├──────────┼──────────────────────┼─────────────┼──────────┼────────┼──────┤ ║
-║ │ a3f2b1c8 │ Ubuntu 24.04 ISO     │ Downloading │ 45.2%    │ 2.3 MB │ 12   │ ║
-║ │ e7d4c9a1 │ Fedora 40 Workst...  │ Seeding     │ 100.0%   │ 0.0 KB │  8   │ ║
-║ └──────────┴──────────────────────┴─────────────┴──────────┴────────┴──────┘ ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╔═ TUITorrent - Active Downloads ════════════════════════════════════════════════════════╗
+║ ┌──────────┬────────────────────┬─────────────┬──────────┬──────────┬────────┬───────┐ ║
+║ │ ID       │ Name               │ State       │ Progress │ DL Speed │ UL     │ Peers │ ║
+║ ├──────────┼────────────────────┼─────────────┼──────────┼──────────┼────────┼───────┤ ║
+║ │ a3f2b1c8 │ Ubuntu 24.04 ISO   │ Downloading │ 45.2%    │ 2.3 MB/s │ 120 KB │ 12    │ ║
+║ │ e7d4c9a1 │ Fedora 40 Works... │ Seeding     │ 100.0%   │ 0.0 KB/s │ 540 KB │  8    │ ║
+║ │ 1b9e0f42 │ Fetching metadata  │ Starting    │ 0.0%     │ 0.0 KB/s │ 0.0 KB │  0    │ ║
+║ └──────────┴────────────────────┴─────────────┴──────────┴──────────┴────────┴───────┘ ║
+╚════════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
-### `status`
+### 🔍 `status`
 
-Show detailed information about a specific torrent.
+Show detailed information for a specific torrent.
 
 ```
 tuitorrent status <id> [OPTIONS]
 ```
 
-| Option | Description |
-|---|---|
-| `<id>` | Torrent ID (8-character hex, shown by `list` or `download`) |
-| `-f, --follow` | Follow progress in real-time |
+| Option | Short | Description |
+|---|---|---|
+| `<id>` | | 8-char hex torrent ID *(required)* |
+| `--follow` | `-f` | Follow progress in real-time |
 
-**Examples:**
+<details>
+<summary><b>📋 Examples</b></summary>
 
 ```bash
-# Show current status
+# One-time snapshot
 tuitorrent status a3f2b1c8
 
-# Follow progress live until complete
+# Live follow until complete
 tuitorrent status a3f2b1c8 -f
 ```
 
+</details>
+
 ---
 
-### `stop`
+### ⏸️ `stop`
 
 Stop (pause) a torrent download.
 
@@ -154,23 +202,19 @@ Stop (pause) a torrent download.
 tuitorrent stop <id>
 ```
 
-**Examples:**
-
 ```bash
 tuitorrent stop a3f2b1c8
 ```
 
 ---
 
-### `remove` (alias: `rm`)
+### 🗑️ `remove` (alias: `rm`)
 
 Remove a torrent from the daemon. Stops the download if active.
 
 ```
 tuitorrent remove <id>
 ```
-
-**Examples:**
 
 ```bash
 tuitorrent remove a3f2b1c8
@@ -179,9 +223,9 @@ tuitorrent rm e7d4c9a1
 
 ---
 
-### `settings` (alias: `config`)
+### ⚙️ `settings` (alias: `config`)
 
-View or modify persistent application settings. When called without options, displays current settings. Pass options to update values.
+View or modify persistent settings. Run without options to display current values.
 
 ```
 tuitorrent settings [OPTIONS]
@@ -190,15 +234,16 @@ tuitorrent settings [OPTIONS]
 | Option | Description |
 |---|---|
 | `--show` | Display current settings |
-| `--output <dir>` | Set default output directory |
-| `--port <port>` | Set default listening port |
-| `--dl-limit <KB/s>` | Set default max download speed (0 = unlimited) |
-| `--ul-limit <KB/s>` | Set default max upload speed (0 = unlimited) |
-| `--max-connections <n>` | Set default max connections |
-| `--encryption <mode>` | Set encryption mode: `None`, `Prefer`, or `Require` |
-| `--seed <bool>` | Enable/disable seeding after download: `true` or `false` |
+| `--output <dir>` | Default output directory |
+| `--port <port>` | Default listening port |
+| `--dl-limit <KB/s>` | Default max download speed (0 = unlimited) |
+| `--ul-limit <KB/s>` | Default max upload speed (0 = unlimited) |
+| `--max-connections <n>` | Default max connections |
+| `--encryption <mode>` | `None`, `Prefer`, or `Require` |
+| `--seed <bool>` | Seed after download: `true` / `false` |
 
-**Examples:**
+<details>
+<summary><b>📋 Examples</b></summary>
 
 ```bash
 # View current settings
@@ -207,61 +252,48 @@ tuitorrent settings
 # Change output directory
 tuitorrent settings --output ~/Downloads/torrents
 
-# Set speed limits and disable seeding by default
+# Speed limits + disable seeding
 tuitorrent config --dl-limit 5120 --ul-limit 1024 --seed false
 
-# Change port and require encryption
+# Require encryption on a specific port
 tuitorrent config --port 6881 --encryption Require
 
 # Set multiple options at once
 tuitorrent settings --output /data/downloads --max-connections 100 --port 55555
 ```
 
-**Default settings:**
+</details>
+
+**Defaults:**
 
 | Setting | Default |
 |---|---|
 | Output Directory | `~/Downloads` |
 | Listen Port | `55123` |
-| Max DL Speed | Unlimited |
-| Max UL Speed | Unlimited |
+| Max DL / UL Speed | Unlimited |
 | Max Connections | `200` |
 | Encryption | `Prefer` |
 | Seed After Download | `true` |
 
-Settings are stored in `~/.config/tuitorrent/settings.json`.
+Settings file: `~/.config/tuitorrent/settings.json`
 
 ---
 
-### `daemon`
+### 🔧 `daemon`
 
-Manage the background daemon process. The daemon is automatically started when using `download`, `list`, `status`, `stop`, or `remove`. These subcommands are for manual control.
+Manage the background daemon. Usually not needed — the daemon auto-starts on first command.
 
 #### `daemon start`
 
-Start the daemon in the foreground.
-
-```
-tuitorrent daemon start [OPTIONS]
-```
-
-| Option | Description |
-|---|---|
-| `--exit-when-done` | Automatically shut down when all downloads complete |
-
-**Examples:**
-
 ```bash
-# Start daemon (runs in foreground, Ctrl+C to stop)
+# Foreground (Ctrl+C to stop)
 tuitorrent daemon start
 
-# Start daemon that exits when all downloads finish
+# Auto-exit when all downloads complete
 tuitorrent daemon start --exit-when-done
 ```
 
 #### `daemon stop`
-
-Gracefully stop the running daemon. All active downloads will be stopped.
 
 ```bash
 tuitorrent daemon stop
@@ -269,82 +301,227 @@ tuitorrent daemon stop
 
 #### `daemon status`
 
-Check if the daemon is running.
-
 ```bash
 tuitorrent daemon status
+# → Daemon is running. PID: 12345
 ```
 
-## Architecture
+---
 
-TUITorrent follows Domain-Driven Design (DDD) with full Dependency Injection and async/await throughout.
+## 🔀 Workflows
+
+### Single download (fire & forget)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Daemon
+    participant BitTorrent
+
+    User->>CLI: tuitorrent dl magnet:... --exit-when-done -f
+    CLI->>Daemon: Auto-start daemon
+    CLI->>Daemon: Add torrent
+    Daemon->>BitTorrent: Connect to peers
+    loop Every 500ms
+        CLI->>Daemon: Poll progress
+        Daemon-->>CLI: TorrentInfo
+        CLI-->>User: Live table update
+    end
+    BitTorrent-->>Daemon: Download complete
+    Daemon->>Daemon: Auto-shutdown (exit-when-done)
+```
+
+### Multiple concurrent downloads
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Daemon
+
+    User->>CLI: tuitorrent dl magnet:A --exit-when-done
+    CLI->>Daemon: Auto-start + Add torrent A
+    CLI-->>User: Added (ID: a3f2b1c8)
+
+    User->>CLI: tuitorrent dl magnet:B
+    CLI->>Daemon: Add torrent B
+    CLI-->>User: Added (ID: e7d4c9a1)
+
+    User->>CLI: tuitorrent ls -w
+    loop Live dashboard
+        CLI->>Daemon: List all
+        Daemon-->>CLI: [A: 45%, B: 12%]
+        CLI-->>User: Render table
+    end
+
+    Note over Daemon: Both finish downloading
+    Daemon->>Daemon: Auto-shutdown
+```
+
+### Daemon lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle : daemon start
+    Idle --> Running : Add first torrent
+    Running --> Running : Add / stop / remove torrents
+    Running --> CheckDone : Torrent completes
+    CheckDone --> Running : Other torrents still active
+    CheckDone --> Shutdown : All done + exit-when-done
+    Running --> Shutdown : Ctrl+C / daemon stop
+    Shutdown --> [*]
+```
+
+---
+
+## 🏗️ Architecture
+
+TUITorrent follows **Domain-Driven Design (DDD)** with full **Dependency Injection** and **async/await** throughout.
+
+```mermaid
+graph TB
+    subgraph Presentation ["🖥️ Presentation"]
+        CLI[Spectre.Console CLI]
+        Renderer[Progress Renderer]
+    end
+
+    subgraph Application ["⚙️ Application"]
+        DS[DownloadService]
+        SS[SettingsAppService]
+    end
+
+    subgraph Domain ["🧠 Domain"]
+        TS[TorrentSource]
+        DC[DownloadConfiguration]
+        ITM[ITorrentManager]
+        ISR[ISettingsRepository]
+    end
+
+    subgraph Infrastructure ["🔌 Infrastructure"]
+        DC_Client[DaemonClient]
+        DC_Server[DaemonServer]
+        MTM[MonoTorrentManager]
+        JSR[JsonSettingsRepository]
+    end
+
+    subgraph External ["☁️ External"]
+        Socket[Unix Socket]
+        MonoTorrent[MonoTorrent Engine]
+        FS[File System]
+    end
+
+    CLI --> DS
+    CLI --> SS
+    CLI --> Renderer
+    DS --> ITM
+    DS --> ISR
+    SS --> ISR
+
+    DC_Client -.->|implements| ITM
+    MTM -.->|implements| ITM
+    JSR -.->|implements| ISR
+
+    DC_Client -->|JSON over| Socket
+    Socket --> DC_Server
+    DC_Server --> MTM
+    MTM --> MonoTorrent
+    JSR --> FS
+```
+
+### 📂 Project structure
 
 ```
 TUITorrent/
-├── Domain/                          # Core business logic, no external dependencies
+├── Domain/                           # 🧠 Core — zero external dependencies
 │   ├── Enums/
 │   │   └── EncryptionMode.cs
 │   ├── ValueObjects/
-│   │   ├── TorrentSource.cs         # Validates magnet vs .torrent
-│   │   └── DownloadConfiguration.cs # Immutable download parameters
+│   │   ├── TorrentSource.cs          # Validates magnet vs .torrent
+│   │   └── DownloadConfiguration.cs  # Immutable download config
 │   └── Interfaces/
-│       ├── ISettingsRepository.cs   # Persistence contract
-│       └── ITorrentManager.cs       # Multi-download manager contract
+│       ├── ISettingsRepository.cs
+│       └── ITorrentManager.cs        # Add / List / Get / Stop / Remove
 │
-├── Application/                     # Use cases and orchestration
+├── Application/                      # ⚙️ Use cases & orchestration
 │   ├── Models/
-│   │   ├── AppSettings.cs           # Settings model
-│   │   ├── TorrentInfo.cs           # Download status snapshot
-│   │   └── TorrentProgress.cs       # Status enum
+│   │   ├── AppSettings.cs
+│   │   ├── TorrentInfo.cs            # Rich download snapshot
+│   │   └── TorrentProgress.cs        # Status enum
 │   └── Services/
-│       ├── DownloadService.cs       # Build config + add torrent
-│       └── SettingsAppService.cs    # Settings CRUD
+│       ├── DownloadService.cs
+│       └── SettingsAppService.cs
 │
-├── Infrastructure/                  # External implementations
+├── Infrastructure/                   # 🔌 External implementations
 │   ├── Persistence/
-│   │   └── JsonSettingsRepository.cs
+│   │   └── JsonSettingsRepository.cs # Async JSON file I/O
 │   ├── Torrent/
-│   │   └── MonoTorrentManager.cs    # MonoTorrent engine wrapper
+│   │   └── MonoTorrentManager.cs     # Shared ClientEngine + ConcurrentDictionary
 │   └── Daemon/
-│       ├── DaemonProtocol.cs        # Socket message types
-│       ├── DaemonServer.cs          # Unix socket server
-│       └── DaemonClient.cs          # Unix socket client
+│       ├── DaemonProtocol.cs         # Request/Response types + serialization
+│       ├── DaemonServer.cs           # Unix socket listener
+│       └── DaemonClient.cs           # Socket client + auto-start logic
 │
-├── Presentation/                    # CLI and rendering
-│   ├── Commands/                    # Spectre.Console.Cli commands
+├── Presentation/                     # 🖥️ CLI layer
+│   ├── Commands/
+│   │   ├── DownloadCommand.cs
+│   │   ├── ListCommand.cs
+│   │   ├── StatusCommand.cs
+│   │   ├── StopTorrentCommand.cs
+│   │   ├── RemoveTorrentCommand.cs
+│   │   ├── SettingsCommand.cs
+│   │   └── DaemonCommand.cs
 │   ├── Rendering/
 │   │   └── TorrentProgressRenderer.cs
 │   └── Infrastructure/
-│       ├── TypeRegistrar.cs         # DI bridge
+│       ├── TypeRegistrar.cs          # DI ↔ Spectre.Console bridge
 │       └── TypeResolver.cs
 │
-└── Program.cs                       # Entry point and DI setup
+└── Program.cs                        # Entry point + DI registration
 ```
 
-### Daemon Communication
+---
 
-CLI commands communicate with the daemon via a Unix domain socket at `~/.config/tuitorrent/daemon.sock` using newline-delimited JSON messages. The daemon manages a shared MonoTorrent `ClientEngine` instance and tracks all downloads concurrently.
+## 📁 Configuration
 
-### Files and Paths
+### Files & paths
 
 | Path | Description |
 |---|---|
-| `~/.config/tuitorrent/settings.json` | Persistent settings |
-| `~/.config/tuitorrent/daemon.sock` | Unix domain socket |
-| `~/.config/tuitorrent/daemon.pid` | Daemon process ID |
-| `~/.config/tuitorrent/daemon.log` | Daemon log (daily rolling, 7 days) |
-| `~/.config/tuitorrent/cache/` | MonoTorrent engine cache |
+| `~/.config/tuitorrent/settings.json` | 📝 Persistent settings |
+| `~/.config/tuitorrent/daemon.sock` | 🔌 Unix domain socket (IPC) |
+| `~/.config/tuitorrent/daemon.pid` | 🆔 Daemon process ID |
+| `~/.config/tuitorrent/daemon.log` | 📄 Daemon log (daily rolling, 7 days retained) |
+| `~/.config/tuitorrent/cache/` | 💾 MonoTorrent engine cache |
 
-## Tech Stack
+### Settings JSON example
 
-| Library | Purpose |
-|---|---|
-| [MonoTorrent](https://github.com/alanmcgovern/monotorrent) | BitTorrent protocol engine |
-| [Spectre.Console](https://spectreconsole.net/) | Terminal UI rendering |
-| [Spectre.Console.Cli](https://spectreconsole.net/cli/) | CLI argument parsing |
-| [Serilog](https://serilog.net/) | Structured logging |
-| [Microsoft.Extensions.DependencyInjection](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection) | Dependency injection |
+```json
+{
+  "outputDirectory": "/Users/you/Downloads",
+  "listenPort": 55123,
+  "maxDownloadSpeedKbps": 0,
+  "maxUploadSpeedKbps": 0,
+  "maxConnections": 200,
+  "encryption": "Prefer",
+  "seedAfterDownload": true
+}
+```
 
-## License
+---
 
-MIT
+## 🛠️ Tech Stack
+
+| Library | Version | Purpose |
+|---|---|---|
+| [MonoTorrent](https://github.com/alanmcgovern/monotorrent) | 3.0.2 | BitTorrent protocol engine |
+| [Spectre.Console](https://spectreconsole.net/) | 0.54.0 | Terminal UI rendering |
+| [Spectre.Console.Cli](https://spectreconsole.net/cli/) | 0.53.1 | CLI argument parsing & DI |
+| [Serilog](https://serilog.net/) | 4.2.0 | Structured logging |
+| [Microsoft.Extensions.DI](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection) | 10.0.3 | Dependency injection |
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
