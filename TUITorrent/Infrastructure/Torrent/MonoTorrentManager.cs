@@ -9,6 +9,7 @@ namespace TUITorrent.Infrastructure.Torrent;
 
 public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
 {
+    private static readonly HttpClient HttpClient = new();
     private ClientEngine? _engine;
     private readonly ConcurrentDictionary<string, ManagedTorrent> _torrents = new();
     private readonly SemaphoreSlim _engineLock = new(1, 1);
@@ -69,6 +70,12 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
         {
             var magnet = MagnetLink.Parse(config.Source.Value);
             manager = await engine.AddAsync(magnet, config.OutputDirectory);
+        }
+        else if (config.Source.Type == TorrentSourceType.Url)
+        {
+            var torrentBytes = await HttpClient.GetByteArrayAsync(config.Source.Value, cancellationToken);
+            var torrent = await MonoTorrent.Torrent.LoadAsync(torrentBytes);
+            manager = await engine.AddAsync(torrent, config.OutputDirectory);
         }
         else
         {

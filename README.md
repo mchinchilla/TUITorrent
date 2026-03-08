@@ -39,7 +39,7 @@
 
 | | Feature | Description |
 |---|---|---|
-| 🧲 | **Magnet & .torrent** | Accepts both magnet URIs and `.torrent` files |
+| 🧲 | **Magnet, URL & .torrent** | Accepts magnet URIs, HTTP/HTTPS URLs to `.torrent` files, and local `.torrent` files |
 | 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
 | 📊 | **Live progress** | Real-time tables with speed, peers, progress |
 | ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
@@ -60,6 +60,9 @@ dotnet build
 # 2. Download a torrent (daemon starts automatically)
 dotnet run --project TUITorrent -- dl "magnet:?xt=urn:btih:..." -f
 
+# Or download from a .torrent URL
+dotnet run --project TUITorrent -- dl "https://example.com/ubuntu.torrent" -f
+
 # 3. Check all active downloads
 dotnet run --project TUITorrent -- ls
 ```
@@ -77,7 +80,7 @@ dotnet publish TUITorrent -c Release -o dist
 
 ### 📥 `download` (alias: `dl`)
 
-Add a torrent to the download queue. Auto-starts the daemon if not running.
+Add a torrent to the download queue. Supports magnet links, HTTP/HTTPS URLs to `.torrent` files, and local `.torrent` files. Auto-starts the daemon if not running.
 
 ```
 tuitorrent download <source> [OPTIONS]
@@ -85,7 +88,7 @@ tuitorrent download <source> [OPTIONS]
 
 | Option | Short | Description |
 |---|---|---|
-| `<source>` | | Magnet URI or `.torrent` file path *(required)* |
+| `<source>` | | Magnet URI, URL to a `.torrent` file, or local `.torrent` file path *(required)* |
 | `--output <dir>` | `-o` | Destination directory |
 | `--port <port>` | `-p` | Listening port |
 | `--dl-limit <KB/s>` | | Max download speed (0 = unlimited) |
@@ -105,6 +108,9 @@ tuitorrent download "magnet:?xt=urn:btih:..."
 # Follow progress live
 tuitorrent dl "magnet:?xt=urn:btih:..." -f
 
+# Download from a .torrent URL
+tuitorrent dl "https://example.com/ubuntu-24.04.torrent" -f
+
 # .torrent file to a specific directory
 tuitorrent download ubuntu.torrent -o ~/Downloads/ISOs
 
@@ -114,9 +120,9 @@ tuitorrent dl "magnet:?xt=urn:btih:..." --dl-limit 2048 --ul-limit 512 --no-seed
 # Auto-shutdown when done
 tuitorrent dl "magnet:?xt=urn:btih:..." --exit-when-done -f
 
-# Queue multiple downloads
+# Queue multiple downloads (magnet, URL, and local file)
 tuitorrent dl "magnet:?xt=urn:btih:abc..." --exit-when-done
-tuitorrent dl "magnet:?xt=urn:btih:def..."
+tuitorrent dl "https://example.com/movie.torrent"
 tuitorrent dl fedora.torrent -o /data/isos
 # ↑ Daemon auto-exits when all three finish
 ```
@@ -452,7 +458,7 @@ TUITorrent/
 │   ├── Enums/
 │   │   └── EncryptionMode.cs
 │   ├── ValueObjects/
-│   │   ├── TorrentSource.cs          # Validates magnet vs .torrent
+│   │   ├── TorrentSource.cs          # Validates magnet / URL / .torrent
 │   │   └── DownloadConfiguration.cs  # Immutable download config
 │   └── Interfaces/
 │       ├── ISettingsRepository.cs

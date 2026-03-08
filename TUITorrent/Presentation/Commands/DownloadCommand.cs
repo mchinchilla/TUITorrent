@@ -22,7 +22,7 @@ public class DownloadCommand : AsyncCommand<DownloadCommand.Settings>
     public class Settings : CommandSettings
     {
         [CommandArgument(0, "<source>")]
-        [Description("Magnet URI or path to a .torrent file")]
+        [Description("Magnet URI, URL to a .torrent file, or local path to a .torrent file")]
         public string Source { get; set; } = string.Empty;
 
         [CommandOption("-o|--output")]
