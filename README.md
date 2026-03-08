@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🌊 TUITorrent</h1>
+  <h1 align="center">🌊 TUITorrent (Text UI Torrent)</h1>
   <p align="center">
     A terminal-based BitTorrent client built with .NET 10<br/>
     Daemon architecture · Multiple simultaneous downloads · Real-time TUI
