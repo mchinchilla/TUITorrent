@@ -2,14 +2,14 @@
   <h1 align="center">🌊 TUITorrent (Text UI Torrent)</h1>
   <p align="center">
     A terminal-based BitTorrent client built with .NET 10<br/>
-    Daemon architecture · Multiple simultaneous downloads · Real-time TUI
+    Daemon architecture · Pause / Resume · Download priority · Real-time TUI
   </p>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
-  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey" alt="Platform" />
+  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
   <img src="https://img.shields.io/badge/UI-Spectre.Console-blueviolet" alt="Spectre.Console" />
 </p>
 
@@ -24,15 +24,19 @@
   - [list](#-list-alias-ls)
   - [status](#-status)
   - [priority](#-priority-alias-prio)
-  - [stop](#%EF%B8%8F-stop-alias-pause)
-  - [resume](#-resume)
-  - [remove](#-remove-alias-rm)
+  - [stop / pause](#%EF%B8%8F-stop-alias-pause)
+  - [resume](#%EF%B8%8F-resume)
+  - [remove](#%EF%B8%8F-remove-alias-rm)
   - [settings](#%EF%B8%8F-settings-alias-config)
   - [daemon](#-daemon)
 - [Workflows](#-workflows)
-- [Architecture](#-architecture)
+  - [Single download](#single-download-fire--forget)
+  - [Multi-download with priority & pause/resume](#multiple-concurrent-downloads-with-priority--pauseresume)
+  - [Torrent lifecycle](#torrent-lifecycle)
+  - [Daemon lifecycle](#daemon-lifecycle)
+- [Architecture](#%EF%B8%8F-architecture)
 - [Configuration](#-configuration)
-- [Tech Stack](#-tech-stack)
+- [Tech Stack](#%EF%B8%8F-tech-stack)
 - [License](#-license)
 
 ---
@@ -43,6 +47,7 @@
 |---|---|---|
 | 🧲 | **Magnet, URL & .torrent** | Accepts magnet URIs, HTTP/HTTPS URLs to `.torrent` files, and local `.torrent` files |
 | 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
+| ⏯️ | **Pause / Resume** | Pause any download and resume it later without losing progress |
 | 🎯 | **Download priority** | Set Low / Normal / High priority per torrent, sorted in list view |
 | 📊 | **Live progress** | Real-time tables with speed, peers, progress |
 | ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
@@ -68,6 +73,10 @@ dotnet run --project TUITorrent -- dl "https://example.com/ubuntu.torrent" -f
 
 # 3. Check all active downloads
 dotnet run --project TUITorrent -- ls
+
+# 4. Pause and resume a download
+dotnet run --project TUITorrent -- pause a3f2b1c8
+dotnet run --project TUITorrent -- resume a3f2b1c8
 ```
 
 Or publish as a standalone binary:
@@ -402,7 +411,7 @@ sequenceDiagram
     Daemon->>Daemon: Auto-shutdown (exit-when-done)
 ```
 
-### Multiple concurrent downloads
+### Multiple concurrent downloads with priority & pause/resume
 
 ```mermaid
 sequenceDiagram
@@ -418,15 +427,43 @@ sequenceDiagram
     CLI->>Daemon: Add torrent B
     CLI-->>User: Added (ID: e7d4c9a1)
 
+    User->>CLI: tuitorrent prio a3f2b1c8 high
+    CLI->>Daemon: Set priority → High
+
+    User->>CLI: tuitorrent pause e7d4c9a1
+    CLI->>Daemon: Stop torrent B
+
     User->>CLI: tuitorrent ls -w
     loop Live dashboard
         CLI->>Daemon: List all
-        Daemon-->>CLI: [A: 45%, B: 12%]
+        Daemon-->>CLI: [A: 72% High, B: 12% Stopped]
         CLI-->>User: Render table
     end
 
+    User->>CLI: tuitorrent resume e7d4c9a1
+    CLI->>Daemon: Resume torrent B
+
     Note over Daemon: Both finish downloading
     Daemon->>Daemon: Auto-shutdown
+```
+
+### Torrent lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Starting : download / dl
+    Starting --> Downloading : Metadata resolved
+    Downloading --> Stopped : stop / pause
+    Stopped --> Downloading : resume
+    Downloading --> Seeding : 100% complete
+    Seeding --> Stopped : stop / pause
+    Stopped --> [*] : remove / rm
+    Downloading --> [*] : remove / rm
+    Seeding --> [*] : remove / rm
+    Downloading --> Error : Failure
+    Error --> [*] : remove / rm
+
+    note right of Downloading : Priority (Low / Normal / High)\ncan be changed at any time
 ```
 
 ### Daemon lifecycle
@@ -435,7 +472,7 @@ sequenceDiagram
 stateDiagram-v2
     [*] --> Idle : daemon start
     Idle --> Running : Add first torrent
-    Running --> Running : Add / stop / remove torrents
+    Running --> Running : Add / stop / resume / priority / remove
     Running --> CheckDone : Torrent completes
     CheckDone --> Running : Other torrents still active
     CheckDone --> Shutdown : All done + exit-when-done
