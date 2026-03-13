@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-1.0.0-blue" alt="Version 1.0.0" />
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10" />
   <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey" alt="Platform" />
@@ -47,7 +48,7 @@
 |---|---|---|
 | 🧲 | **Magnet, URL & .torrent** | Accepts magnet URIs, HTTP/HTTPS URLs to `.torrent` files, and local `.torrent` files |
 | 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
-| ⏯️ | **Pause / Resume** | Pause any download and resume it later without losing progress |
+| ⏯️ | **Pause / Resume** | Pause any download and resume later — survives daemon restarts |
 | 🎯 | **Download priority** | Set Low / Normal / High priority per torrent, sorted in list view |
 | 📊 | **Live progress** | Real-time tables with speed, peers, progress |
 | ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
@@ -562,7 +563,8 @@ TUITorrent/
 │
 ├── Infrastructure/                   # 🔌 External implementations
 │   ├── Persistence/
-│   │   └── JsonSettingsRepository.cs # Async JSON file I/O
+│   │   ├── JsonSettingsRepository.cs # Async JSON file I/O
+│   │   └── TorrentStateStore.cs     # Persists active downloads for restore
 │   ├── Torrent/
 │   │   └── MonoTorrentManager.cs     # Shared ClientEngine + ConcurrentDictionary
 │   └── Daemon/
@@ -599,10 +601,12 @@ TUITorrent/
 | Path | Description |
 |---|---|
 | `~/.config/tuitorrent/settings.json` | 📝 Persistent settings |
+| `~/.config/tuitorrent/torrents.json` | 📋 Active downloads state (auto-restored on daemon restart) |
+| `~/.config/tuitorrent/torrents/` | 📦 Cached `.torrent` files for restoration |
 | `~/.config/tuitorrent/daemon.sock` | 🔌 Unix domain socket (IPC) |
 | `~/.config/tuitorrent/daemon.pid` | 🆔 Daemon process ID |
 | `~/.config/tuitorrent/daemon.log` | 📄 Daemon log (daily rolling, 7 days retained) |
-| `~/.config/tuitorrent/cache/` | 💾 MonoTorrent engine cache |
+| `~/.config/tuitorrent/cache/` | 💾 MonoTorrent engine cache (fast resume & metadata) |
 
 ### Settings JSON example
 

@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console.Cli;
 using TUITorrent.Application.Services;
@@ -6,6 +7,10 @@ using TUITorrent.Infrastructure.Daemon;
 using TUITorrent.Infrastructure.Persistence;
 using TUITorrent.Presentation.Commands;
 using TUITorrent.Presentation.Infrastructure;
+
+var version = Assembly.GetExecutingAssembly()
+    .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+    ?.InformationalVersion ?? "0.0.0";
 
 var services = new ServiceCollection();
 
@@ -24,6 +29,7 @@ var app = new CommandApp(registrar);
 app.Configure(config =>
 {
     config.SetApplicationName("tuitorrent");
+    config.SetApplicationVersion(version);
 
     config.AddCommand<DownloadCommand>("download")
         .WithAlias("dl")

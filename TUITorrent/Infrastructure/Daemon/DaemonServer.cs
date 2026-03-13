@@ -28,6 +28,13 @@ public class DaemonServer : IAsyncDisposable
 
         Directory.CreateDirectory(DaemonPaths.ConfigDir);
 
+        var restoredCount = await _manager.RestoreAsync(cancellationToken);
+        if (restoredCount > 0)
+        {
+            _hasTorrents = true;
+            _logger.Information("Restored {Count} torrent(s) from previous session", restoredCount);
+        }
+
         if (File.Exists(DaemonPaths.SocketPath))
             File.Delete(DaemonPaths.SocketPath);
 
@@ -60,6 +67,8 @@ public class DaemonServer : IAsyncDisposable
         catch (OperationCanceledException) { }
         finally
         {
+            // Persist state BEFORE cleanup stops all torrents
+            await _manager.PersistStateAsync();
             await CleanupAsync();
         }
     }
