@@ -23,7 +23,9 @@
   - [download](#-download-alias-dl)
   - [list](#-list-alias-ls)
   - [status](#-status)
-  - [stop](#-stop)
+  - [priority](#-priority-alias-prio)
+  - [stop](#%EF%B8%8F-stop-alias-pause)
+  - [resume](#-resume)
   - [remove](#-remove-alias-rm)
   - [settings](#%EF%B8%8F-settings-alias-config)
   - [daemon](#-daemon)
@@ -41,10 +43,11 @@
 |---|---|---|
 | 🧲 | **Magnet, URL & .torrent** | Accepts magnet URIs, HTTP/HTTPS URLs to `.torrent` files, and local `.torrent` files |
 | 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
+| 🎯 | **Download priority** | Set Low / Normal / High priority per torrent, sorted in list view |
 | 📊 | **Live progress** | Real-time tables with speed, peers, progress |
 | ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
 | 🚀 | **Auto-start daemon** | Daemon launches automatically on first download |
-| 🛑 | **Auto-shutdown** | `--exit-when-done` stops daemon when all downloads finish |
+| 🛑 | **Auto-shutdown** | `--exit-when-done` stops daemon when all downloads finish (can be enabled at any time) |
 | 🔒 | **Encryption** | Configurable connection encryption (None / Prefer / Require) |
 | 🎚️ | **Speed limits** | Per-download or global upload/download throttling |
 
@@ -159,15 +162,15 @@ tuitorrent ls -w
 **Sample output:**
 
 ```
-╔═ TUITorrent - Active Downloads ════════════════════════════════════════════════════════╗
-║ ┌──────────┬────────────────────┬─────────────┬──────────┬──────────┬────────┬───────┐ ║
-║ │ ID       │ Name               │ State       │ Progress │ DL Speed │ UL     │ Peers │ ║
-║ ├──────────┼────────────────────┼─────────────┼──────────┼──────────┼────────┼───────┤ ║
-║ │ a3f2b1c8 │ Ubuntu 24.04 ISO   │ Downloading │ 45.2%    │ 2.3 MB/s │ 120 KB │ 12    │ ║
-║ │ e7d4c9a1 │ Fedora 40 Works... │ Seeding     │ 100.0%   │ 0.0 KB/s │ 540 KB │  8    │ ║
-║ │ 1b9e0f42 │ Fetching metadata  │ Starting    │ 0.0%     │ 0.0 KB/s │ 0.0 KB │  0    │ ║
-║ └──────────┴────────────────────┴─────────────┴──────────┴──────────┴────────┴───────┘ ║
-╚════════════════════════════════════════════════════════════════════════════════════════╝
+╔═ TUITorrent - Active Downloads ══════════════════════════════════════════════════════════════════╗
+║ ┌──────────┬────────────────────┬──────────┬─────────────┬──────────┬──────────┬────────┬───────┐ ║
+║ │ ID       │ Name               │ Priority │ State       │ Progress │ DL Speed │ UL     │ Peers │ ║
+║ ├──────────┼────────────────────┼──────────┼─────────────┼──────────┼──────────┼────────┼───────┤ ║
+║ │ a3f2b1c8 │ Ubuntu 24.04 ISO   │ High     │ Downloading │ 45.2%    │ 2.3 MB/s │ 120 KB │ 12    │ ║
+║ │ e7d4c9a1 │ Fedora 40 Works... │ Normal   │ Seeding     │ 100.0%   │ 0.0 KB/s │ 540 KB │  8    │ ║
+║ │ 1b9e0f42 │ Fetching metadata  │ Low      │ Starting    │ 0.0%     │ 0.0 KB/s │ 0.0 KB │  0    │ ║
+║ └──────────┴────────────────────┴──────────┴─────────────┴──────────┴──────────┴────────┴───────┘ ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
@@ -200,9 +203,40 @@ tuitorrent status a3f2b1c8 -f
 
 ---
 
-### ⏸️ `stop`
+### 🎯 `priority` (alias: `prio`)
 
-Stop (pause) a torrent download.
+Set the download priority of a torrent. Higher priority torrents appear first in the list view.
+
+```
+tuitorrent priority <id> <priority>
+```
+
+| Argument | Description |
+|---|---|
+| `<id>` | 8-char hex torrent ID *(required)* |
+| `<priority>` | Priority level: `low`, `normal`, or `high` *(required)* |
+
+<details>
+<summary><b>📋 Examples</b></summary>
+
+```bash
+# Set a torrent to high priority
+tuitorrent priority a3f2b1c8 high
+
+# Lower priority of a torrent
+tuitorrent prio e7d4c9a1 low
+
+# Reset to default priority
+tuitorrent priority a3f2b1c8 normal
+```
+
+</details>
+
+---
+
+### ⏸️ `stop` (alias: `pause`)
+
+Pause a torrent download. The torrent remains in the list and can be resumed later.
 
 ```
 tuitorrent stop <id>
@@ -210,6 +244,21 @@ tuitorrent stop <id>
 
 ```bash
 tuitorrent stop a3f2b1c8
+tuitorrent pause a3f2b1c8
+```
+
+---
+
+### ▶️ `resume`
+
+Resume a paused torrent download.
+
+```
+tuitorrent resume <id>
+```
+
+```bash
+tuitorrent resume a3f2b1c8
 ```
 
 ---
@@ -456,13 +505,14 @@ graph TB
 TUITorrent/
 ├── Domain/                           # 🧠 Core — zero external dependencies
 │   ├── Enums/
-│   │   └── EncryptionMode.cs
+│   │   ├── EncryptionMode.cs
+│   │   └── TorrentPriority.cs
 │   ├── ValueObjects/
 │   │   ├── TorrentSource.cs          # Validates magnet / URL / .torrent
 │   │   └── DownloadConfiguration.cs  # Immutable download config
 │   └── Interfaces/
 │       ├── ISettingsRepository.cs
-│       └── ITorrentManager.cs        # Add / List / Get / Stop / Remove / Purge
+│       └── ITorrentManager.cs        # Add / List / Get / Stop / Resume / Remove / Purge / SetPriority
 │
 ├── Application/                      # ⚙️ Use cases & orchestration
 │   ├── Models/
@@ -488,7 +538,9 @@ TUITorrent/
 │   │   ├── DownloadCommand.cs
 │   │   ├── ListCommand.cs
 │   │   ├── StatusCommand.cs
+│   │   ├── PriorityCommand.cs
 │   │   ├── StopTorrentCommand.cs
+│   │   ├── ResumeTorrentCommand.cs
 │   │   ├── RemoveTorrentCommand.cs
 │   │   ├── SettingsCommand.cs
 │   │   └── DaemonCommand.cs

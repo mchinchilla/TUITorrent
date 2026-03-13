@@ -14,6 +14,7 @@ public class DaemonServer : IAsyncDisposable
     private Socket? _listener;
     private bool _exitWhenDone;
     private bool _hasTorrents;
+    private CancellationTokenSource? _serverCts;
 
     public DaemonServer(MonoTorrentManager manager, ILogger logger)
     {
@@ -43,6 +44,7 @@ public class DaemonServer : IAsyncDisposable
             exitWhenDone ? " [exit-when-done]" : "");
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _serverCts = cts;
 
         if (exitWhenDone)
             _ = MonitorCompletionAsync(cts);
@@ -123,8 +125,11 @@ public class DaemonServer : IAsyncDisposable
                 ListTorrentsRequest => await HandleListAsync(cancellationToken),
                 GetTorrentRequest get => await HandleGetAsync(get, cancellationToken),
                 StopTorrentRequest stop => await HandleStopAsync(stop, cancellationToken),
+                ResumeTorrentRequest resume => await HandleResumeAsync(resume, cancellationToken),
                 RemoveTorrentRequest remove => await HandleRemoveAsync(remove, cancellationToken),
                 PurgeTorrentRequest purge => await HandlePurgeAsync(purge, cancellationToken),
+                SetPriorityRequest pri => await HandleSetPriorityAsync(pri, cancellationToken),
+                SetExitWhenDoneRequest ewd => HandleSetExitWhenDone(ewd),
                 ShutdownRequest => HandleShutdown(),
                 _ => new DaemonResponse(false, Error: "Unknown request type")
             };
@@ -176,6 +181,17 @@ public class DaemonServer : IAsyncDisposable
         return new DaemonResponse(true);
     }
 
+    private async Task<DaemonResponse> HandleResumeAsync(ResumeTorrentRequest req, CancellationToken ct)
+    {
+        var info = await _manager.GetAsync(req.Id, ct);
+        if (info is null)
+            return new DaemonResponse(false, Error: $"Torrent '{req.Id}' not found");
+
+        await _manager.ResumeAsync(req.Id, ct);
+        _logger.Information("Resumed torrent {Id}", req.Id);
+        return new DaemonResponse(true);
+    }
+
     private async Task<DaemonResponse> HandleRemoveAsync(RemoveTorrentRequest req, CancellationToken ct)
     {
         var info = await _manager.GetAsync(req.Id, ct);
@@ -195,6 +211,35 @@ public class DaemonServer : IAsyncDisposable
 
         await _manager.PurgeAsync(req.Id, ct);
         _logger.Information("Purged torrent {Id} (data deleted)", req.Id);
+        return new DaemonResponse(true);
+    }
+
+    private async Task<DaemonResponse> HandleSetPriorityAsync(SetPriorityRequest req, CancellationToken ct)
+    {
+        var info = await _manager.GetAsync(req.Id, ct);
+        if (info is null)
+            return new DaemonResponse(false, Error: $"Torrent '{req.Id}' not found");
+
+        await _manager.SetPriorityAsync(req.Id, req.Priority, ct);
+        _logger.Information("Set priority of torrent {Id} to {Priority}", req.Id, req.Priority);
+        return new DaemonResponse(true);
+    }
+
+    private DaemonResponse HandleSetExitWhenDone(SetExitWhenDoneRequest req)
+    {
+        if (req.Enable && !_exitWhenDone)
+        {
+            _exitWhenDone = true;
+            if (_serverCts is not null)
+                _ = MonitorCompletionAsync(_serverCts);
+            _logger.Information("Exit-when-done enabled");
+        }
+        else if (!req.Enable)
+        {
+            _exitWhenDone = false;
+            _logger.Information("Exit-when-done disabled");
+        }
+
         return new DaemonResponse(true);
     }
 

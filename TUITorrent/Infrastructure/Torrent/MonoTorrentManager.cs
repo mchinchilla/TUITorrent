@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using MonoTorrent;
 using MonoTorrent.Client;
 using TUITorrent.Application.Models;
+using TUITorrent.Domain.Enums;
 using TUITorrent.Domain.Interfaces;
 using TUITorrent.Domain.ValueObjects;
 
@@ -20,7 +21,10 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
         string SourceDisplay,
         string OutputDirectory,
         bool SeedAfterDownload,
-        DateTime AddedAt);
+        DateTime AddedAt)
+    {
+        public TorrentPriority Priority { get; set; } = TorrentPriority.Normal;
+    };
 
     private async Task<ClientEngine> GetOrCreateEngineAsync(DownloadConfiguration config)
     {
@@ -113,6 +117,12 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
             await managed.Manager.StopAsync();
     }
 
+    public async Task ResumeAsync(string id, CancellationToken cancellationToken = default)
+    {
+        if (_torrents.TryGetValue(id, out var managed))
+            await managed.Manager.StartAsync();
+    }
+
     public async Task RemoveAsync(string id, CancellationToken cancellationToken = default)
     {
         if (_torrents.TryRemove(id, out var managed))
@@ -121,6 +131,13 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
             if (_engine is not null)
                 await _engine.RemoveAsync(managed.Manager);
         }
+    }
+
+    public Task SetPriorityAsync(string id, TorrentPriority priority, CancellationToken cancellationToken = default)
+    {
+        if (_torrents.TryGetValue(id, out var managed))
+            managed.Priority = priority;
+        return Task.CompletedTask;
     }
 
     public async Task PurgeAsync(string id, CancellationToken cancellationToken = default)
@@ -170,7 +187,8 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
             Peers: m.Manager.Peers.Available,
             Seeds: m.Manager.Peers.Seeds,
             TotalSizeBytes: m.Manager.Torrent?.Size ?? 0,
-            AddedAt: m.AddedAt);
+            AddedAt: m.AddedAt,
+            Priority: m.Priority);
     }
 
     public async ValueTask DisposeAsync()

@@ -43,9 +43,20 @@ app.Configure(config =>
         .WithExample("status", "a3f2b1c8")
         .WithExample("status", "a3f2b1c8", "-f");
 
+    config.AddCommand<PriorityCommand>("priority")
+        .WithAlias("prio")
+        .WithDescription("Set the download priority of a torrent")
+        .WithExample("priority", "a3f2b1c8", "high")
+        .WithExample("prio", "a3f2b1c8", "low");
+
     config.AddCommand<StopTorrentCommand>("stop")
-        .WithDescription("Stop a torrent download")
+        .WithAlias("pause")
+        .WithDescription("Pause a torrent download")
         .WithExample("stop", "a3f2b1c8");
+
+    config.AddCommand<ResumeTorrentCommand>("resume")
+        .WithDescription("Resume a paused torrent download")
+        .WithExample("resume", "a3f2b1c8");
 
     config.AddCommand<RemoveTorrentCommand>("remove")
         .WithAlias("rm")

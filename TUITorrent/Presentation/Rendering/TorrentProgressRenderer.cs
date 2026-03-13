@@ -1,5 +1,6 @@
 using Spectre.Console;
 using TUITorrent.Application.Models;
+using TUITorrent.Domain.Enums;
 using TUITorrent.Domain.ValueObjects;
 
 namespace TUITorrent.Presentation.Rendering;
@@ -56,7 +57,9 @@ public static class TorrentProgressRenderer
         table.AddRow("Name", $"[bold]{Markup.Escape(info.Name)}[/]");
         table.AddRow("Source", $"[cyan]{Markup.Escape(info.Source)}[/]");
         table.AddRow("Output", $"[green]{Markup.Escape(info.OutputDirectory)}[/]");
+        var priorityColor = GetPriorityColor(info.Priority);
         table.AddRow("State", $"[{stateColor}]{info.State}[/]");
+        table.AddRow("Priority", $"[{priorityColor}]{info.Priority}[/]");
         table.AddRow("Progress", $"[green]{info.ProgressPercent:F1}%[/]");
         table.AddRow("Download", $"[cyan]{FormatSpeed(info.DownloadRateKbps)}[/]");
         table.AddRow("Upload", $"[yellow]{FormatSpeed(info.UploadRateKbps)}[/]");
@@ -75,6 +78,7 @@ public static class TorrentProgressRenderer
         var table = new Table().Border(TableBorder.Rounded);
         table.AddColumn("ID");
         table.AddColumn("Name");
+        table.AddColumn("Priority");
         table.AddColumn("State");
         table.AddColumn("Progress");
         table.AddColumn("DL Speed");
@@ -82,9 +86,12 @@ public static class TorrentProgressRenderer
         table.AddColumn("Peers");
         table.AddColumn("Size");
 
-        foreach (var t in torrents)
+        var sorted = torrents.OrderByDescending(t => t.Priority).ToList();
+
+        foreach (var t in sorted)
         {
             var stateColor = GetStateColor(t.State);
+            var priorityColor = GetPriorityColor(t.Priority);
             var name = t.Name.Length > 35
                 ? t.Name[..32] + "..."
                 : t.Name;
@@ -92,6 +99,7 @@ public static class TorrentProgressRenderer
             table.AddRow(
                 $"[bold]{t.Id}[/]",
                 Markup.Escape(name),
+                $"[{priorityColor}]{t.Priority}[/]",
                 $"[{stateColor}]{t.State}[/]",
                 $"[green]{t.ProgressPercent:F1}%[/]",
                 $"[cyan]{FormatSpeed(t.DownloadRateKbps)}[/]",
@@ -120,6 +128,13 @@ public static class TorrentProgressRenderer
             ? "[green]Yes[/]" : "[red]No[/]");
         return table;
     }
+
+    private static string GetPriorityColor(TorrentPriority priority) => priority switch
+    {
+        TorrentPriority.High => "red",
+        TorrentPriority.Low => "grey",
+        _ => "yellow"
+    };
 
     private static string GetStateColor(TorrentStatus state) => state switch
     {

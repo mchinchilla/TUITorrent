@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using TUITorrent.Application.Models;
+using TUITorrent.Domain.Enums;
 using TUITorrent.Domain.Interfaces;
 using TUITorrent.Domain.ValueObjects;
 
@@ -41,6 +42,11 @@ public class DaemonClient : ITorrentManager
         await SendRequestAsync(new StopTorrentRequest(id), cancellationToken);
     }
 
+    public async Task ResumeAsync(string id, CancellationToken cancellationToken = default)
+    {
+        await SendRequestAsync(new ResumeTorrentRequest(id), cancellationToken);
+    }
+
     public async Task RemoveAsync(string id, CancellationToken cancellationToken = default)
     {
         await SendRequestAsync(new RemoveTorrentRequest(id), cancellationToken);
@@ -49,6 +55,16 @@ public class DaemonClient : ITorrentManager
     public async Task PurgeAsync(string id, CancellationToken cancellationToken = default)
     {
         await SendRequestAsync(new PurgeTorrentRequest(id), cancellationToken);
+    }
+
+    public async Task SetPriorityAsync(string id, TorrentPriority priority, CancellationToken cancellationToken = default)
+    {
+        await SendRequestAsync(new SetPriorityRequest(id, priority), cancellationToken);
+    }
+
+    public async Task SetExitWhenDoneAsync(bool enable, CancellationToken cancellationToken = default)
+    {
+        await SendRequestAsync(new SetExitWhenDoneRequest(enable), cancellationToken);
     }
 
     public async Task ShutdownAsync(CancellationToken cancellationToken = default)
@@ -60,7 +76,11 @@ public class DaemonClient : ITorrentManager
         bool exitWhenDone = false, CancellationToken cancellationToken = default)
     {
         if (await IsDaemonRunningAsync())
+        {
+            if (exitWhenDone)
+                await SetExitWhenDoneAsync(true, cancellationToken);
             return;
+        }
 
         var exePath = Environment.ProcessPath
                       ?? throw new InvalidOperationException("Cannot determine executable path.");

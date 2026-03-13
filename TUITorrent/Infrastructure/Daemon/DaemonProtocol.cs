@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using TUITorrent.Application.Models;
+using TUITorrent.Domain.Enums;
 
 namespace TUITorrent.Infrastructure.Daemon;
 
@@ -20,8 +21,11 @@ public static class DaemonPaths
 [JsonDerivedType(typeof(ListTorrentsRequest), "list")]
 [JsonDerivedType(typeof(GetTorrentRequest), "get")]
 [JsonDerivedType(typeof(StopTorrentRequest), "stop")]
+[JsonDerivedType(typeof(ResumeTorrentRequest), "resume")]
 [JsonDerivedType(typeof(RemoveTorrentRequest), "remove")]
 [JsonDerivedType(typeof(PurgeTorrentRequest), "purge")]
+[JsonDerivedType(typeof(SetPriorityRequest), "set-priority")]
+[JsonDerivedType(typeof(SetExitWhenDoneRequest), "set-exit-when-done")]
 [JsonDerivedType(typeof(ShutdownRequest), "shutdown")]
 public abstract record DaemonRequest;
 
@@ -37,8 +41,11 @@ public sealed record AddTorrentRequest(
 public sealed record ListTorrentsRequest : DaemonRequest;
 public sealed record GetTorrentRequest(string Id) : DaemonRequest;
 public sealed record StopTorrentRequest(string Id) : DaemonRequest;
+public sealed record ResumeTorrentRequest(string Id) : DaemonRequest;
 public sealed record RemoveTorrentRequest(string Id) : DaemonRequest;
 public sealed record PurgeTorrentRequest(string Id) : DaemonRequest;
+public sealed record SetPriorityRequest(string Id, TorrentPriority Priority) : DaemonRequest;
+public sealed record SetExitWhenDoneRequest(bool Enable) : DaemonRequest;
 public sealed record ShutdownRequest : DaemonRequest;
 
 // --- Responses ---
@@ -62,16 +69,17 @@ public sealed record TorrentInfoDto(
     int Peers,
     int Seeds,
     long TotalSizeBytes,
-    DateTime AddedAt)
+    DateTime AddedAt,
+    TorrentPriority Priority = TorrentPriority.Normal)
 {
     public TorrentInfo ToDomain() => new(
         Id, Name, Source, OutputDirectory, State, ProgressPercent,
-        DownloadRateKbps, UploadRateKbps, Peers, Seeds, TotalSizeBytes, AddedAt);
+        DownloadRateKbps, UploadRateKbps, Peers, Seeds, TotalSizeBytes, AddedAt, Priority);
 
     public static TorrentInfoDto FromDomain(TorrentInfo info) => new(
         info.Id, info.Name, info.Source, info.OutputDirectory, info.State,
         info.ProgressPercent, info.DownloadRateKbps, info.UploadRateKbps,
-        info.Peers, info.Seeds, info.TotalSizeBytes, info.AddedAt);
+        info.Peers, info.Seeds, info.TotalSizeBytes, info.AddedAt, info.Priority);
 }
 
 public static class DaemonSerializer

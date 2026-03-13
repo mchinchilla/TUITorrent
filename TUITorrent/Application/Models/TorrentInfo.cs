@@ -1,3 +1,5 @@
+using TUITorrent.Domain.Enums;
+
 namespace TUITorrent.Application.Models;
 
 public sealed record TorrentInfo(
@@ -12,4 +14,5 @@ public sealed record TorrentInfo(
     int Peers,
     int Seeds,
     long TotalSizeBytes,
-    DateTime AddedAt);
+    DateTime AddedAt,
+    TorrentPriority Priority = TorrentPriority.Normal);
