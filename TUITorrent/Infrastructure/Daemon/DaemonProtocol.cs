@@ -13,6 +13,7 @@ public static class DaemonPaths
 
     public static readonly string SocketPath = Path.Combine(ConfigDir, "daemon.sock");
     public static readonly string PidFile = Path.Combine(ConfigDir, "daemon.pid");
+    public static readonly string LockPath = Path.Combine(ConfigDir, "daemon.lock");
 }
 
 // --- Requests ---

@@ -299,8 +299,13 @@ public class MonoTorrentManager : ITorrentManager, IAsyncDisposable
             Priority: m.Priority);
     }
 
+    private bool _disposed;
+
     public async ValueTask DisposeAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         foreach (var managed in _torrents.Values)
             await managed.Manager.StopAsync();
 

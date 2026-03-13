@@ -12,8 +12,10 @@ public class DaemonServer : IAsyncDisposable
     private readonly MonoTorrentManager _manager;
     private readonly ILogger _logger;
     private Socket? _listener;
+    private FileStream? _lockFile;
     private bool _exitWhenDone;
     private bool _hasTorrents;
+    private bool _disposed;
     private CancellationTokenSource? _serverCts;
 
     public DaemonServer(MonoTorrentManager manager, ILogger logger)
@@ -22,11 +24,25 @@ public class DaemonServer : IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task RunAsync(CancellationToken cancellationToken, bool exitWhenDone = false)
+    public async Task RunAsync(CancellationToken cancellationToken, bool exitWhenDone = false, Action? onReady = null)
     {
         _exitWhenDone = exitWhenDone;
 
         Directory.CreateDirectory(DaemonPaths.ConfigDir);
+
+        // Acquire exclusive lock to prevent multiple daemon instances
+        try
+        {
+            _lockFile = new FileStream(
+                DaemonPaths.LockPath, FileMode.OpenOrCreate,
+                FileAccess.ReadWrite, FileShare.None);
+        }
+        catch (IOException)
+        {
+            _logger.Warning("Another daemon instance is already running");
+            throw new InvalidOperationException(
+                "Another daemon instance is already running. Use 'tuitorrent daemon status' to check.");
+        }
 
         var restoredCount = await _manager.RestoreAsync(cancellationToken);
         if (restoredCount > 0)
@@ -50,6 +66,8 @@ public class DaemonServer : IAsyncDisposable
             DaemonPaths.SocketPath, Environment.ProcessId,
             exitWhenDone ? " [exit-when-done]" : "");
 
+        onReady?.Invoke();
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _serverCts = cts;
 
@@ -65,8 +83,11 @@ public class DaemonServer : IAsyncDisposable
             }
         }
         catch (OperationCanceledException) { }
+        catch (SocketException) when (cts.Token.IsCancellationRequested) { }
+        catch (ObjectDisposedException) when (cts.Token.IsCancellationRequested) { }
         finally
         {
+            _serverCts = null;
             // Persist state BEFORE cleanup stops all torrents
             await _manager.PersistStateAsync();
             await CleanupAsync();
@@ -75,30 +96,38 @@ public class DaemonServer : IAsyncDisposable
 
     private async Task MonitorCompletionAsync(CancellationTokenSource cts)
     {
-        while (!cts.Token.IsCancellationRequested)
+        try
         {
-            await Task.Delay(3000, cts.Token)
-                .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            while (!cts.Token.IsCancellationRequested && _exitWhenDone)
+            {
+                await Task.Delay(3000, cts.Token)
+                    .ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
-            if (cts.Token.IsCancellationRequested)
-                break;
+                if (cts.Token.IsCancellationRequested || !_exitWhenDone)
+                    break;
 
-            var torrents = await _manager.ListAsync(cts.Token);
+                var torrents = await _manager.ListAsync(CancellationToken.None);
 
-            if (torrents.Count > 0)
-                _hasTorrents = true;
+                if (torrents.Count > 0)
+                    _hasTorrents = true;
 
-            if (!_hasTorrents)
-                continue;
+                if (!_hasTorrents)
+                    continue;
 
-            var allDone = torrents.Count > 0 && torrents.All(t =>
-                t.State is TorrentStatus.Seeding or TorrentStatus.Stopped or TorrentStatus.Error);
+                var allDone = torrents.Count > 0 && torrents.All(t =>
+                    t.State is TorrentStatus.Seeding or TorrentStatus.Stopped or TorrentStatus.Error);
 
-            if (!allDone)
-                continue;
+                if (!allDone)
+                    continue;
 
-            _logger.Information("All downloads complete. Shutting down daemon (exit-when-done).");
-            await cts.CancelAsync();
+                _logger.Information("All downloads complete. Shutting down daemon (exit-when-done).");
+                await cts.CancelAsync();
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Error in exit-when-done monitor");
         }
     }
 
@@ -117,7 +146,7 @@ public class DaemonServer : IAsyncDisposable
             var response = await ProcessRequestAsync(request, cancellationToken);
             await writer.WriteLineAsync(DaemonSerializer.SerializeResponse(response));
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _logger.Error(ex, "Error handling client connection");
         }
@@ -160,6 +189,7 @@ public class DaemonServer : IAsyncDisposable
             req.MaxConnections, req.SeedAfterDownload);
 
         var id = await _manager.AddAsync(config, ct);
+        _hasTorrents = true;
         _logger.Information("Added torrent {Id}: {Source}", id, source.DisplayName);
         return new DaemonResponse(true, Id: id);
     }
@@ -255,23 +285,38 @@ public class DaemonServer : IAsyncDisposable
     private DaemonResponse HandleShutdown()
     {
         _logger.Information("Shutdown requested");
-        _ = Task.Run(async () =>
+        // Cancel the server CTS for a clean shutdown (persist state + cleanup)
+        var cts = _serverCts;
+        if (cts is not null)
         {
-            await Task.Delay(200);
-            Environment.Exit(0);
-        });
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(200); // Give time for response to be sent
+                await cts.CancelAsync();
+            });
+        }
+
         return new DaemonResponse(true);
     }
 
     private async Task CleanupAsync()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _listener?.Dispose();
+        _listener = null;
 
         if (File.Exists(DaemonPaths.SocketPath))
             File.Delete(DaemonPaths.SocketPath);
 
         if (File.Exists(DaemonPaths.PidFile))
             File.Delete(DaemonPaths.PidFile);
+
+        _lockFile?.Dispose();
+        _lockFile = null;
+
+        try { File.Delete(DaemonPaths.LockPath); } catch { /* ignore */ }
 
         await _manager.DisposeAsync();
     }

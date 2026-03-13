@@ -27,10 +27,6 @@ public class DaemonStartCommand : AsyncCommand<DaemonStartCommand.Settings>
                 retainedFileCountLimit: 7)
             .CreateLogger();
 
-        AnsiConsole.MarkupLine(settings.ExitWhenDone
-            ? "[cyan]Starting TUITorrent daemon (exit-when-done)...[/]"
-            : "[cyan]Starting TUITorrent daemon...[/]");
-
         await using var manager = new MonoTorrentManager();
         await using var server = new DaemonServer(manager, logger);
 
@@ -42,8 +38,26 @@ public class DaemonStartCommand : AsyncCommand<DaemonStartCommand.Settings>
             cts.Cancel();
         };
 
-        await server.RunAsync(cts.Token, exitWhenDone: settings.ExitWhenDone);
-        return 0;
+        try
+        {
+            AnsiConsole.MarkupLine(settings.ExitWhenDone
+                ? "[cyan]Starting TUITorrent daemon (exit-when-done)...[/]"
+                : "[cyan]Starting TUITorrent daemon...[/]");
+
+            await server.RunAsync(cts.Token, exitWhenDone: settings.ExitWhenDone, onReady: () =>
+            {
+                AnsiConsole.MarkupLine($"[green]Daemon ready.[/] PID: [bold]{Environment.ProcessId}[/]");
+                AnsiConsole.MarkupLine("[dim]Press Ctrl+C to stop.[/]");
+            });
+
+            AnsiConsole.MarkupLine("[green]Daemon stopped.[/]");
+            return 0;
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already running"))
+        {
+            AnsiConsole.MarkupLine($"[red]{ex.Message}[/]");
+            return 1;
+        }
     }
 }
 

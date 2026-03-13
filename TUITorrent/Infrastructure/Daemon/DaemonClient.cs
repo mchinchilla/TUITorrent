@@ -124,9 +124,9 @@ public class DaemonClient : ITorrentManager
         }
         catch
         {
-            // Socket file exists but daemon is dead - clean up
-            if (File.Exists(DaemonPaths.SocketPath))
-                File.Delete(DaemonPaths.SocketPath);
+            // Socket file exists but daemon is dead - clean up stale files
+            try { File.Delete(DaemonPaths.SocketPath); } catch { /* ignore */ }
+            try { File.Delete(DaemonPaths.PidFile); } catch { /* ignore */ }
             return false;
         }
     }
