@@ -2,7 +2,7 @@
   <h1 align="center">🌊 TUITorrent (Text UI Torrent)</h1>
   <p align="center">
     A terminal-based BitTorrent client built with .NET 10<br/>
-    Daemon architecture · Pause / Resume · Download priority · Real-time TUI
+    Daemon architecture · Pause / Resume · Download priority · State persistence · Real-time TUI
   </p>
 </p>
 
@@ -50,6 +50,7 @@
 | 🔄 | **Concurrent downloads** | Multiple simultaneous downloads via background daemon |
 | ⏯️ | **Pause / Resume** | Pause any download and resume later — survives daemon restarts |
 | 🎯 | **Download priority** | Set Low / Normal / High priority per torrent, sorted in list view |
+| 💾 | **State persistence** | Incomplete downloads auto-restore when the daemon restarts |
 | 📊 | **Live progress** | Real-time tables with speed, peers, progress |
 | ⚙️ | **Persistent settings** | JSON config with per-download CLI overrides |
 | 🚀 | **Auto-start daemon** | Daemon launches automatically on first download |
@@ -66,16 +67,20 @@
 git clone <repo-url> && cd TUITorrent
 dotnet build
 
-# 2. Download a torrent (daemon starts automatically)
+# 2. Check version
+dotnet run --project TUITorrent -- --version
+# → 1.0.0
+
+# 3. Download a torrent (daemon starts automatically)
 dotnet run --project TUITorrent -- dl "magnet:?xt=urn:btih:..." -f
 
 # Or download from a .torrent URL
 dotnet run --project TUITorrent -- dl "https://example.com/ubuntu.torrent" -f
 
-# 3. Check all active downloads
+# 4. Check all active downloads
 dotnet run --project TUITorrent -- ls
 
-# 4. Pause and resume a download
+# 5. Pause and resume a download
 dotnet run --project TUITorrent -- pause a3f2b1c8
 dotnet run --project TUITorrent -- resume a3f2b1c8
 ```
@@ -363,6 +368,8 @@ Settings file: `~/.config/tuitorrent/settings.json`
 
 Manage the background daemon. Usually not needed — the daemon auto-starts on first command.
 
+On startup, the daemon automatically restores incomplete downloads from the previous session. Torrents that were actively downloading resume automatically; paused torrents remain paused.
+
 #### `daemon start`
 
 ```bash
@@ -377,6 +384,7 @@ tuitorrent daemon start --exit-when-done
 
 ```bash
 tuitorrent daemon stop
+# State is saved — incomplete downloads will restore on next start
 ```
 
 #### `daemon status`
@@ -384,6 +392,16 @@ tuitorrent daemon stop
 ```bash
 tuitorrent daemon status
 # → Daemon is running. PID: 12345
+```
+
+#### `--version`
+
+```bash
+tuitorrent --version
+# → 1.0.0
+
+tuitorrent -v
+# → 1.0.0
 ```
 
 ---
@@ -471,14 +489,42 @@ stateDiagram-v2
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Idle : daemon start
+    [*] --> Restore : daemon start
+    Restore --> Idle : No saved torrents
+    Restore --> Running : Restored N torrents
     Idle --> Running : Add first torrent
     Running --> Running : Add / stop / resume / priority / remove
     Running --> CheckDone : Torrent completes
     CheckDone --> Running : Other torrents still active
     CheckDone --> Shutdown : All done + exit-when-done
     Running --> Shutdown : Ctrl+C / daemon stop
-    Shutdown --> [*]
+    Shutdown --> [*] : Save state + cleanup
+```
+
+### State persistence
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Daemon
+    participant StateFile as torrents.json
+    participant MonoTorrent as MonoTorrent Cache
+
+    Note over Daemon: Daemon starts
+    Daemon->>StateFile: Load saved torrents
+    Daemon->>MonoTorrent: Re-add torrents (fast resume)
+    Daemon->>Daemon: Resume active / keep paused
+
+    User->>Daemon: Add / pause / resume / priority
+    Daemon->>StateFile: Auto-save after each change
+
+    Note over User: Daemon stops (Ctrl+C / daemon stop)
+    Daemon->>StateFile: Save final state (before stopping torrents)
+    Daemon->>MonoTorrent: Stop all + save fast resume
+
+    Note over Daemon: Next daemon start
+    Daemon->>StateFile: Restore incomplete downloads
+    Note over Daemon: Completed torrents (100%) are not restored
 ```
 
 ---
